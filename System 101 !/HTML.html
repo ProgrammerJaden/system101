@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Life Management System</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Life Management System</h1>
+            <nav class="main-nav">
+                <button onclick="showPage('status')">Status</button>
+                <button onclick="showPage('inventory')">Inventory</button>
+                <button onclick="showPage('skills')">Skills</button>
+                <button onclick="showPage('quests')">Quests</button>
+                <button onclick="showPage('notifications')">Notifications</button>
+            </nav>
+        </header>
+
+        <!-- Status Page -->
+        <div id="status-page" class="page active">
+            <section class="profile">
+                <h2>Profile</h2>
+                <div class="info">
+                    <span contenteditable="true">NAME: Jaden</span>
+                    <span contenteditable="true">LEVEL: 1</span>
+                    <span contenteditable="true">TITLE: Dr</span>
+                    <span contenteditable="true">RANK: D</span>
+                </div>
+                <p contenteditable="true">"I do my best no matter what."</p>
+            </section>
+        </div>
+
+        <!-- Inventory Page -->
+        <div id="inventory-page" class="page">
+            <section class="inventory">
+                <h2>Inventory</h2>
+                <div id="inventory" contenteditable="true">
+                    <p>Laptop, Notebook, Pen</p>
+                </div>
+            </section>
+        </div>
+
+        <!-- Skills Page -->
+        <div id="skills-page" class="page">
+            <section class="skills">
+                <h2>Skills & Stats</h2>
+                <div id="skills" contenteditable="true">
+                    <p>HTML, CSS, JavaScript, Python</p>
+                </div>
+                <h3>Stat Points</h3>
+                <ul>
+                    <li>Physical: <span id="physical" contenteditable="true">0</span> <button onclick="increaseStat('physical')">+</button></li>
+                    <li>Mental: <span id="mental" contenteditable="true">0</span> <button onclick="increaseStat('mental')">+</button></li>
+                    <li>Social: <span id="social" contenteditable="true">0</span> <button onclick="increaseStat('social')">+</button></li>
+                    <li>Financial: <span id="financial" contenteditable="true">0</span> <button onclick="increaseStat('financial')">+</button></li>
+                    <li>Spiritual: <span id="spiritual" contenteditable="true">0</span> <button onclick="increaseStat('spiritual')">+</button></li>
+                </ul>
+            </section>
+        </div>
+
+        <!-- Quests Page -->
+        <div id="quests-page" class="page">
+            <section class="quests">
+                <h2>Current Quests</h2>
+                <div id="quests" contenteditable="true">
+                    <p contenteditable="true">1. </p>
+                    <p contenteditable="true">2. </p>
+                    <p contenteditable="true">3. </p>
+                    <p contenteditable="true">4. </p>
+                    <p contenteditable="true">5. </p>
+                </div>
+            </section>
+        </div>
+
+        <!-- Notifications Page -->
+        <div id="notifications-page" class="page">
+            <section class="notifications">
+                <h2>Notifications</h2>
+                <div id="notifications" contenteditable="true">
+                    <p>No new notifications.</p>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <script>
+        function showPage(pageId) {
+            document.querySelectorAll('.page').forEach(page => {
+                page.classList.remove('active');
+            });
+            document.getElementById(`${pageId}-page`).classList.add('active');
+        }
+        
+        function increaseStat(statId) {
+            let statElement = document.getElementById(statId);
+            let currentValue = parseInt(statElement.innerText) || 0;
+            statElement.innerText = currentValue + 1;
+        }
+
+        showPage('status');
+    </script>
+</body>
+</html>
