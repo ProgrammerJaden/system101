@@ -37,14 +37,16 @@
       <div class="brand">
         <div class="brand-lockup"><span class="brand-mark" aria-hidden="true">✳</span><div><h1>Daylight Club</h1><p class="muted">Make room for the things that matter.</p></div></div>
         <div class="account-tools">
-          <span id="currentUser" class="muted"></span>
-          <button id="signOutButton" type="button">Sign out</button>
           <div id="todayLabel" class="muted"></div>
+          <span id="profileAvatar" class="profile-avatar" role="img" aria-label="Profile picture">
+            <img id="profileAvatarImage" alt="" hidden>
+            <span id="profileInitials" aria-hidden="true">D</span>
+          </span>
           <details id="settingsMenu" class="settings-menu">
             <summary aria-label="Open appearance settings"><span aria-hidden="true">⚙</span> Settings</summary>
             <div class="settings-panel">
-              <h2>Make it yours</h2>
-              <label for="themeSelect">Color theme</label>
+              <h2>Themes</h2>
+              <label for="themeSelect">Color palette</label>
               <select id="themeSelect">
                 <option value="paper">Sunny paper</option>
                 <option value="garden">Garden notes</option>
@@ -58,6 +60,7 @@
               </select>
               <label for="textSize">Text size <output id="textSizeValue" for="textSize">16 px</output></label>
               <input id="textSize" type="range" min="14" max="20" step="1" value="16">
+              <button id="signOutButton" class="settings-sign-out" type="button">Sign out</button>
             </div>
           </details>
         </div>

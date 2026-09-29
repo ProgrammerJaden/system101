@@ -511,6 +511,29 @@ const STORAGE = 'life-system-v2';
     $('authMessage').textContent = message;
   }
 
+  function updateProfileAvatar(user) {
+    const image = $('profileAvatarImage');
+    const initials = $('profileInitials');
+    const email = String(user?.email || '').trim();
+    const photoUrl = user?.user_metadata?.avatar_url || user?.user_metadata?.picture;
+    initials.textContent = email ? email[0].toUpperCase() : 'D';
+    image.hidden = true;
+    initials.hidden = false;
+    image.onerror = () => {
+      image.hidden = true;
+      initials.hidden = false;
+    };
+    if (photoUrl) {
+      image.onload = () => {
+        image.hidden = false;
+        initials.hidden = true;
+      };
+      image.src = photoUrl;
+    } else {
+      image.removeAttribute('src');
+    }
+  }
+
   function initializeAppearance() {
     const theme = $('themeSelect');
     const font = $('fontSelect');
@@ -591,13 +614,14 @@ const STORAGE = 'life-system-v2';
       $('app-panel').hidden = true;
       $('auth-panel').hidden = false;
       $('authSignOutButton').hidden = true;
-      $('currentUser').textContent = '';
+      updateProfileAvatar(null);
       return;
     }
     if (loadedUserId === user.id) return;
     if (loadingUserId === user.id) return;
 
     currentUser = user;
+    updateProfileAvatar(user);
     loadingUserId = user.id;
     $('app-panel').hidden = true;
     $('auth-panel').hidden = false;
@@ -607,7 +631,6 @@ const STORAGE = 'life-system-v2';
       const loaded = await loadUserState(user);
       if (!loaded || currentUser?.id !== user.id) return;
       loadedUserId = user.id;
-      $('currentUser').textContent = user.email || 'Signed in';
       $('auth-panel').hidden = true;
       $('app-panel').hidden = false;
       setAuthMessage('');
