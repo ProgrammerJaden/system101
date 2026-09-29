@@ -1,4 +1,4 @@
-  const STORAGE = 'life-system-v2';
+const STORAGE = 'life-system-v2';
   const LEGACY_MIGRATION = 'life-system-cloud-migrated-v1';
   const REMEMBER_KEY = 'life-system-remember-me';
   const names = ['Physical', 'Mental', 'Social', 'Financial', 'Spiritual'];
