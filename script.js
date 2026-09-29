@@ -1,6 +1,7 @@
 const STORAGE = 'life-system-v2';
   const LEGACY_MIGRATION = 'life-system-cloud-migrated-v1';
   const REMEMBER_KEY = 'life-system-remember-me';
+  const APPEARANCE_KEY = 'daylight-club-appearance';
   const names = ['Physical', 'Mental', 'Social', 'Financial', 'Spiritual'];
   const swotSections = ['strengths', 'weaknesses', 'opportunities', 'threats'];
   const $ = id => document.getElementById(id);
@@ -212,16 +213,31 @@ const STORAGE = 'life-system-v2';
   });
 
   function showPage(id) {
-    document.querySelectorAll('.page').forEach(page => {
-      page.classList.toggle('active', page.id === `${id}-page`);
-    });
-    document.querySelectorAll('.main-nav button').forEach(button => {
-      button.classList.toggle('active', button.dataset.page === id);
-    });
+    const page = $(`${id}-page`);
+    if (!page) return;
     if (id === 'calendar') renderCalendar();
     if (id === 'tasks' || id === 'status') renderTasks();
     if (id === 'inventory') renderInventory();
     if (id === 'skills') renderSkills();
+    page.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  if ('IntersectionObserver' in window) {
+    const sectionObserver = new IntersectionObserver(entries => {
+      const visibleSections = entries.filter(entry => entry.isIntersecting);
+      visibleSections.forEach(entry => entry.target.classList.add('section-arrived'));
+      const currentSection = visibleSections.sort((a, b) =>
+        Math.abs(a.boundingClientRect.top - window.innerHeight * 0.2)
+        - Math.abs(b.boundingClientRect.top - window.innerHeight * 0.2)
+      )[0];
+      if (currentSection) {
+        const pageId = currentSection.target.id.replace('-page', '');
+        document.querySelectorAll('.main-nav [data-page]').forEach(button => {
+          button.classList.toggle('active', button.dataset.page === pageId);
+        });
+      }
+    }, { rootMargin: '-15% 0px -65% 0px' });
+    document.querySelectorAll('.page').forEach(page => sectionObserver.observe(page));
   }
 
   function updateProgress() {
@@ -495,6 +511,47 @@ const STORAGE = 'life-system-v2';
     $('authMessage').textContent = message;
   }
 
+  function initializeAppearance() {
+    const theme = $('themeSelect');
+    const font = $('fontSelect');
+    const textSize = $('textSize');
+    const textSizeValue = $('textSizeValue');
+    const settingsMenu = $('settingsMenu');
+    let saved = {};
+    try {
+      saved = JSON.parse(localStorage.getItem(APPEARANCE_KEY) || '{}') || {};
+    } catch (error) {
+      console.warn('Could not read appearance settings:', error);
+    }
+
+    theme.value = ['paper', 'garden', 'night'].includes(saved.theme) ? saved.theme : 'paper';
+    font.value = ['friendly', 'classic', 'typewriter'].includes(saved.font) ? saved.font : 'friendly';
+    textSize.value = String(Math.min(20, Math.max(14, Number(saved.textSize) || 16)));
+
+    const applyAppearance = () => {
+      document.documentElement.dataset.theme = theme.value;
+      document.documentElement.dataset.font = font.value;
+      document.documentElement.style.setProperty('--text-size', `${textSize.value}px`);
+      textSizeValue.value = `${textSize.value} px`;
+      localStorage.setItem(APPEARANCE_KEY, JSON.stringify({
+        theme: theme.value,
+        font: font.value,
+        textSize: Number(textSize.value)
+      }));
+    };
+
+    theme.addEventListener('change', applyAppearance);
+    font.addEventListener('change', applyAppearance);
+    textSize.addEventListener('input', applyAppearance);
+    document.addEventListener('click', event => {
+      if (!settingsMenu.contains(event.target)) settingsMenu.open = false;
+    });
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape') settingsMenu.open = false;
+    });
+    applyAppearance();
+  }
+
   async function loadUserState(user) {
     const { data: row, error } = await supabaseClient
       .from('life_states')
@@ -601,6 +658,7 @@ const STORAGE = 'life-system-v2';
   $('authSignOutButton').addEventListener('click', signOut);
 
   async function initializeAuthentication() {
+    initializeAppearance();
     $('todayLabel').textContent = new Date().toLocaleDateString(undefined, { dateStyle: 'medium' });
     $('rememberMe').checked = localStorage.getItem(REMEMBER_KEY) !== 'false';
     applyStateToPage();

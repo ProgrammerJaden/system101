@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#111">
-  <title>Life Management System</title>
+  <meta name="theme-color" content="#ffffff">
+  <title>Daylight Club | Your personal daybook</title>
   <link rel="stylesheet" href="styles.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
@@ -13,9 +13,9 @@
 <body>
   <section id="auth-panel" class="auth-panel" aria-labelledby="auth-title">
     <div class="auth-content">
-      <p class="eyebrow">LIFE MANAGEMENT SYSTEM</p>
-      <h1 id="auth-title">Your life, in sync.</h1>
-      <p class="muted">Sign in to access your personal workspace.</p>
+      <p class="eyebrow">DAYLIGHT CLUB</p>
+      <h1 id="auth-title">Make today yours.</h1>
+      <p class="muted">A little more room for the things that matter.</p>
       <form id="authForm">
         <label for="email">Email address</label>
         <input id="email" type="email" autocomplete="email" required>
@@ -34,13 +34,40 @@
 
   <main id="app-panel" class="shell" hidden>
     <header>
-      <div class="brand"><div><h1>Life Management System</h1><div class="muted">A monochrome command center for your life.</div></div><div class="account-tools"><span id="currentUser" class="muted"></span><button id="signOutButton" type="button">Sign out</button><div id="todayLabel" class="muted"></div></div></div>
-      <nav class="main-nav" aria-label="Main navigation">
-        <button data-page="status">Status</button><button data-page="tasks">Tasks</button><button data-page="calendar">Calendar</button><button data-page="inventory">Inventory</button><button data-page="skills">Skills</button><button data-page="swot">SWOT</button><button data-page="notifications">Notifications</button>
-      </nav>
+      <div class="brand">
+        <div class="brand-lockup"><span class="brand-mark" aria-hidden="true">✳</span><div><h1>Daylight Club</h1><p class="muted">Make room for the things that matter.</p></div></div>
+        <div class="account-tools">
+          <span id="currentUser" class="muted"></span>
+          <button id="signOutButton" type="button">Sign out</button>
+          <div id="todayLabel" class="muted"></div>
+          <details id="settingsMenu" class="settings-menu">
+            <summary aria-label="Open appearance settings"><span aria-hidden="true">⚙</span> Settings</summary>
+            <div class="settings-panel">
+              <h2>Make it yours</h2>
+              <label for="themeSelect">Color theme</label>
+              <select id="themeSelect">
+                <option value="paper">Sunny paper</option>
+                <option value="garden">Garden notes</option>
+                <option value="night">After hours</option>
+              </select>
+              <label for="fontSelect">Reading font</label>
+              <select id="fontSelect">
+                <option value="friendly">Friendly</option>
+                <option value="classic">Classic</option>
+                <option value="typewriter">Typewriter</option>
+              </select>
+              <label for="textSize">Text size <output id="textSizeValue" for="textSize">16 px</output></label>
+              <input id="textSize" type="range" min="14" max="20" step="1" value="16">
+            </div>
+          </details>
+        </div>
+      </div>
     </header>
+    <nav class="main-nav" aria-label="Main navigation">
+        <button data-page="status">Today</button><button data-page="tasks">Tasks</button><button data-page="calendar">Calendar</button><button data-page="inventory">Things</button><button data-page="skills">Skills</button><button data-page="swot">SWOT</button><button data-page="notifications">Notes</button>
+    </nav>
 
-    <section id="status-page" class="page active"><div class="grid">
+    <section id="status-page" class="page"><div class="grid">
       <article class="card span-8"><h2>Profile</h2><div class="profile-grid"><div><label for="name">Name</label><input id="name" data-save="name" value="Jaden"></div><div><label for="level">Level</label><input id="level" data-save="level" value="1"></div><div><label for="title">Title</label><input id="title" data-save="title" value="Dr"></div><div><label for="rank">Rank</label><input id="rank" data-save="rank" value="D"></div></div><p><label for="motto">Motto</label><textarea id="motto" data-save="motto">I do my best no matter what.</textarea></p></article>
       <article class="card span-4"><h2>Today</h2><p class="muted">Completed tasks</p><strong id="taskSummary" class="task-summary">0/0</strong><div class="bar"><i id="taskBar"></i></div><div class="level-progress"><div><strong id="levelLabel">Level 1 · Rank D</strong><span id="xpLabel" class="muted">0 / 60 XP</span></div><div class="bar xp-bar"><i id="xpBar"></i></div></div></article>
       <article class="card span-6"><h2>Quick tasks</h2><ul id="quickTasks" class="list"></ul><button data-page="tasks">Open task manager →</button></article>
