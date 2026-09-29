@@ -36,7 +36,7 @@
     <header>
       <div class="brand"><div><h1>Life Management System</h1><div class="muted">A monochrome command center for your life.</div></div><div class="account-tools"><span id="currentUser" class="muted"></span><button id="signOutButton" type="button">Sign out</button><div id="todayLabel" class="muted"></div></div></div>
       <nav class="main-nav" aria-label="Main navigation">
-        <button data-page="status">Status</button><button data-page="tasks">Tasks</button><button data-page="calendar">Calendar</button><button data-page="inventory">Inventory</button><button data-page="skills">Skills</button><button data-page="swot">SWOT</button>
+        <button data-page="status">Status</button><button data-page="tasks">Tasks</button><button data-page="calendar">Calendar</button><button data-page="inventory">Inventory</button><button data-page="skills">Skills</button><button data-page="swot">SWOT</button><button data-page="notifications">Notifications</button>
       </nav>
     </header>
 
@@ -54,6 +54,7 @@
     <section id="inventory-page" class="page"><div class="card"><div class="toolbar"><div><h2>Inventory</h2><p id="inventoryCount" class="muted"></p></div></div><div class="add-row inventory-create"><input id="inventoryInput" placeholder="Item name" aria-label="Item name"><select id="inventoryCategory" aria-label="Item category"><option>Tech</option><option>Study</option><option>Hardware</option><option>Other</option></select><button id="addInventoryItem">Add item</button></div><ul id="inventoryList" class="inventory-grid"></ul></div></section>
     <section id="skills-page" class="page"><div class="card"><h2>Skills & Stats</h2><div class="add-row"><input id="skillInput" placeholder="Add a skill" aria-label="Skill name"><button id="addSkill">Add skill</button></div><ul id="skillList" class="skill-list"></ul><h3 class="stats-heading">Stat points</h3><div id="stats"></div><p class="muted">Complete tasks with a reward stat to grow it.</p></div></section>
     <section id="swot-page" class="page"><div class="card"><h2>SWOT Analysis</h2><div class="swot"><div><h3>Strengths</h3><ul id="strengths-list" contenteditable="true"><li>Curiosity</li><li>Persistence</li></ul></div><div><h3>Weaknesses</h3><ul id="weaknesses-list" contenteditable="true"><li>Distractions</li><li>Inconsistent routines</li></ul></div><div><h3>Opportunities</h3><ul id="opportunities-list" contenteditable="true"><li>Build useful projects</li><li>Learn consistently</li></ul></div><div><h3>Threats</h3><ul id="threats-list" contenteditable="true"><li>Burnout</li><li>Overcommitting</li></ul></div></div></div></section>
+    <section id="notifications-page" class="page"><div class="card"><h2>Notifications</h2><textarea id="notifications" data-save="notifications">No new notifications.</textarea></div></section>
     <footer><span id="syncStatus" role="status" aria-live="polite">Your data syncs to your account.</span></footer>
   </main>
 </body>

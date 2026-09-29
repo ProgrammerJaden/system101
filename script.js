@@ -134,6 +134,8 @@
         .filter(element => ['name', 'level', 'title', 'rank', 'motto'].includes(element.dataset.save))
         .map(element => [element.dataset.save, element.value])
     );
+    const notificationsField = $('notifications');
+    state.notifications = notificationsField ? notificationsField.value : state.notifications ?? 'No new notifications.';
     state.swot = Object.fromEntries(swotSections.map(section => [
       section,
       [...$(`${section}-list`).querySelectorAll('li')]
@@ -180,6 +182,10 @@
   function applyStateToPage() {
     for (const field of ['name', 'level', 'title', 'rank', 'motto']) {
       $(`${field}`).value = state.profile[field] ?? '';
+    }
+    const notificationsField = $('notifications');
+    if (notificationsField) {
+      notificationsField.value = state.notifications ?? 'No new notifications.';
     }
     for (const section of swotSections) {
       const list = $(`${section}-list`);
