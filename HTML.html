@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#ffffff">
   <title>Daylight Club | Your personal daybook</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./daylight-icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="styles.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
@@ -60,6 +62,7 @@
               </select>
               <label for="textSize">Text size <output id="textSizeValue" for="textSize">16 px</output></label>
               <input id="textSize" type="range" min="14" max="20" step="1" value="16">
+              <button id="installAppButton" class="settings-install" type="button" hidden>Install app</button>
               <button id="signOutButton" class="settings-sign-out" type="button">Sign out</button>
             </div>
           </details>

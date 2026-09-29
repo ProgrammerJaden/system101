@@ -575,6 +575,35 @@ const STORAGE = 'life-system-v2';
     applyAppearance();
   }
 
+  function initializePwa() {
+    const installButton = $('installAppButton');
+    let installPrompt = null;
+
+    window.addEventListener('beforeinstallprompt', event => {
+      event.preventDefault();
+      installPrompt = event;
+      installButton.hidden = false;
+    });
+    installButton.addEventListener('click', async () => {
+      if (!installPrompt) return;
+      await installPrompt.prompt();
+      await installPrompt.userChoice;
+      installPrompt = null;
+      installButton.hidden = true;
+    });
+    window.addEventListener('appinstalled', () => {
+      installPrompt = null;
+      installButton.hidden = true;
+    });
+
+    if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./service-worker.js')
+          .catch(error => console.warn('Could not register the app service worker:', error));
+      });
+    }
+  }
+
   async function loadUserState(user) {
     const { data: row, error } = await supabaseClient
       .from('life_states')
@@ -682,6 +711,7 @@ const STORAGE = 'life-system-v2';
 
   async function initializeAuthentication() {
     initializeAppearance();
+    initializePwa();
     $('todayLabel').textContent = new Date().toLocaleDateString(undefined, { dateStyle: 'medium' });
     $('rememberMe').checked = localStorage.getItem(REMEMBER_KEY) !== 'false';
     applyStateToPage();

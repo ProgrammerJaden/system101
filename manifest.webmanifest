@@ -1,0 +1,20 @@
+{
+  "id": "./",
+  "name": "Daylight Club",
+  "short_name": "Daylight",
+  "description": "A personal daybook for making room for the things that matter.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "background_color": "#fffefa",
+  "theme_color": "#ffffff",
+  "icons": [
+    {
+      "src": "./daylight-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
