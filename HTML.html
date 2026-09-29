@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111">
+  <title>Life Management System</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+  <script src="script.js" defer></script>
+ </head>
+<body>
+  <section id="auth-panel" class="auth-panel" aria-labelledby="auth-title">
+    <div class="auth-content">
+      <p class="eyebrow">LIFE MANAGEMENT SYSTEM</p>
+      <h1 id="auth-title">Your life, in sync.</h1>
+      <p class="muted">Sign in to access your personal workspace.</p>
+      <form id="authForm">
+        <label for="email">Email address</label>
+        <input id="email" type="email" autocomplete="email" required>
+        <label for="password">Password</label>
+        <input id="password" type="password" autocomplete="current-password" required>
+        <label class="remember-option"><input id="rememberMe" type="checkbox" checked> Remember me on this device</label>
+        <div class="auth-actions">
+          <button id="signInButton" type="submit">Sign in</button>
+          <button id="signUpButton" type="button">Create account</button>
+        </div>
+      </form>
+      <p id="authMessage" class="auth-message" role="status" aria-live="polite"></p>
+      <button id="authSignOutButton" class="secondary-button" type="button" hidden>Sign out</button>
+    </div>
+  </section>
+
+  <main id="app-panel" class="shell" hidden>
+    <header>
+      <div class="brand"><div><h1>Life Management System</h1><div class="muted">A monochrome command center for your life.</div></div><div class="account-tools"><span id="currentUser" class="muted"></span><button id="signOutButton" type="button">Sign out</button><div id="todayLabel" class="muted"></div></div></div>
+      <nav class="main-nav" aria-label="Main navigation">
+        <button data-page="status">Status</button><button data-page="tasks">Tasks</button><button data-page="calendar">Calendar</button><button data-page="inventory">Inventory</button><button data-page="skills">Skills</button><button data-page="swot">SWOT</button>
+      </nav>
+    </header>
+
+    <section id="status-page" class="page active"><div class="grid">
+      <article class="card span-8"><h2>Profile</h2><div class="profile-grid"><div><label for="name">Name</label><input id="name" data-save="name" value="Jaden"></div><div><label for="level">Level</label><input id="level" data-save="level" value="1"></div><div><label for="title">Title</label><input id="title" data-save="title" value="Dr"></div><div><label for="rank">Rank</label><input id="rank" data-save="rank" value="D"></div></div><p><label for="motto">Motto</label><textarea id="motto" data-save="motto">I do my best no matter what.</textarea></p></article>
+      <article class="card span-4"><h2>Today</h2><p class="muted">Completed tasks</p><strong id="taskSummary" class="task-summary">0/0</strong><div class="bar"><i id="taskBar"></i></div><div class="level-progress"><div><strong id="levelLabel">Level 1 · Rank D</strong><span id="xpLabel" class="muted">0 / 60 XP</span></div><div class="bar xp-bar"><i id="xpBar"></i></div></div></article>
+      <article class="card span-6"><h2>Quick tasks</h2><ul id="quickTasks" class="list"></ul><button data-page="tasks">Open task manager →</button></article>
+      <article class="card span-6"><h2>Principle</h2><p class="quote">Progress is built from small actions repeated consistently.</p></article>
+    </div></section>
+
+    <section id="tasks-page" class="page"><div class="card"><div class="toolbar"><div><h2>Tasks</h2><div class="muted">Plan actions and mark them complete.</div></div><button class="danger" id="clearCompleted">Clear completed</button></div><div class="task-filters" role="group" aria-label="Filter tasks"><button type="button" data-task-filter="all" aria-pressed="true">All</button><button type="button" data-task-filter="today" aria-pressed="false">Today</button><button type="button" data-task-filter="upcoming" aria-pressed="false">Upcoming</button><button type="button" data-task-filter="completed" aria-pressed="false">Completed</button></div><div class="add-row task-create"><input id="taskInput" placeholder="Add a task…" aria-label="Task name"><input id="taskDate" type="date" aria-label="Due date"><select id="taskPriority" aria-label="Priority"><option>Low</option><option selected>Medium</option><option>High</option></select><select id="taskCategory" aria-label="Category"><option>Life</option><option>School</option><option>Work</option></select><select id="taskStat" aria-label="Reward stat"><option value="">No stat</option><option>Physical</option><option>Mental</option><option>Social</option><option>Financial</option><option>Spiritual</option></select><button id="addTask">Add task</button></div><ul id="taskList" class="list task-list"></ul></div></section>
+
+    <section id="calendar-page" class="page"><div class="card"><div class="calendar-head"><button class="icon" id="prevMonth" aria-label="Previous month">←</button><h2 id="monthLabel" style="margin:0"></h2><button class="icon" id="nextMonth" aria-label="Next month">→</button></div><div id="calendarGrid" class="calendar-grid"></div><div class="add-row"><input id="eventInput" placeholder="Add event to selected date…"><button id="addEvent">Add event</button></div><p class="muted" id="selectedDateLabel"></p><ul id="eventList" class="list"></ul></div></section>
+
+    <section id="inventory-page" class="page"><div class="card"><div class="toolbar"><div><h2>Inventory</h2><p id="inventoryCount" class="muted"></p></div></div><div class="add-row inventory-create"><input id="inventoryInput" placeholder="Item name" aria-label="Item name"><select id="inventoryCategory" aria-label="Item category"><option>Tech</option><option>Study</option><option>Hardware</option><option>Other</option></select><button id="addInventoryItem">Add item</button></div><ul id="inventoryList" class="inventory-grid"></ul></div></section>
+    <section id="skills-page" class="page"><div class="card"><h2>Skills & Stats</h2><div class="add-row"><input id="skillInput" placeholder="Add a skill" aria-label="Skill name"><button id="addSkill">Add skill</button></div><ul id="skillList" class="skill-list"></ul><h3 class="stats-heading">Stat points</h3><div id="stats"></div><p class="muted">Complete tasks with a reward stat to grow it.</p></div></section>
+    <section id="swot-page" class="page"><div class="card"><h2>SWOT Analysis</h2><div class="swot"><div><h3>Strengths</h3><ul id="strengths-list" contenteditable="true"><li>Curiosity</li><li>Persistence</li></ul></div><div><h3>Weaknesses</h3><ul id="weaknesses-list" contenteditable="true"><li>Distractions</li><li>Inconsistent routines</li></ul></div><div><h3>Opportunities</h3><ul id="opportunities-list" contenteditable="true"><li>Build useful projects</li><li>Learn consistently</li></ul></div><div><h3>Threats</h3><ul id="threats-list" contenteditable="true"><li>Burnout</li><li>Overcommitting</li></ul></div></div></div></section>
+    <footer><span id="syncStatus" role="status" aria-live="polite">Your data syncs to your account.</span></footer>
+  </main>
+</body>
+</html>
