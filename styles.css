@@ -93,6 +93,16 @@
     .calendar-task { align-items:center !important; }
     .calendar-task-label { display:flex; align-items:center; gap:.65rem; flex:1; min-width:0; text-transform:none; letter-spacing:0; font-size:inherit; color:var(--text); }
     .calendar-task-label span { overflow-wrap:anywhere; }
+    .diary-indicator { color:#fff; background:#56865e; font-size:.62rem !important; }
+    .calendar-diary { align-items:flex-start !important; }
+    .calendar-diary > span { display:grid; gap:.15rem; min-width:0; white-space:pre-wrap; overflow-wrap:anywhere; }
+    .calendar-diary > button { flex:0 0 auto; }
+    .diary-calendar-status { margin:.5rem 0; font-weight:700; }
+    .diary-card { width:100%; max-width:none; }
+    .diary-fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.8rem; margin-bottom:1rem; }
+    .diary-fields > div { min-width:0; }
+    .diary-entry { min-height:220px; }
+    .diary-actions { display:flex; align-items:center; justify-content:space-between; gap:.75rem; margin-top:.8rem; }
     .toolbar { display:flex; justify-content:space-between; gap:.5rem; align-items:center; flex-wrap:wrap; margin-bottom:1rem; }
     .danger:hover { background:#f1a58e; color:#1b100c; }
     footer { color:var(--muted); border-top:1px solid var(--line); margin-top:2rem; padding-top:1rem; font-size:.85rem; }
@@ -124,6 +134,8 @@
     @media (max-width:560px) { .brand { align-items:flex-start; flex-direction:column; } .account-tools { justify-content:flex-start; } }
     @media (max-width:760px) { .span-8,.span-6,.span-4 { grid-column:span 12; } .profile-grid,.swot { grid-template-columns:1fr 1fr; } .day { min-height:62px; padding:.25rem; font-size:.85rem; } .task-create { flex-wrap:wrap; } .task-create #taskInput { flex:1 1 100%; } .task-create input[type="date"], .task-create select { flex:1 1 28%; } }
         @media (max-width:450px) { .shell { width:min(100% - 1rem,1180px); } .profile-grid { grid-template-columns:1fr; } .day-name { font-size:.62rem; } .day { min-height:48px; } .day-indicator i { width:14px; height:14px; font-size:.52rem; } .task-create input[type="date"], .task-create select { flex:1 1 40%; min-width:0; } .task-create button { flex:1 1 100%; } .level-progress > div:first-child { flex-direction:column; gap:0; } }
+    @media (max-width:760px) { .diary-fields { grid-template-columns:1fr; } }
+    @media (max-width:560px) { .diary-actions { align-items:flex-start; flex-direction:column; } }
 
 html { font-size:var(--text-size, 16px); }
 html[data-theme="garden"] { color-scheme:light; --bg:#f3f7ed; --panel:#fffefa; --panel-2:#e8f0df; --line:#cbd9c4; --text:#293b30; --muted:#687c69; --accent:#56865e; --accent-soft:#e0efdc; --accent-ink:#fff; --danger:#aa4a3e; --input:#fff; }

@@ -11,6 +11,7 @@ const STORAGE = 'life-system-v2';
       profile: { name: 'Jaden', level: '1', title: 'Dr', rank: 'D', motto: 'I do my best no matter what.' },
       tasks: [],
       events: {},
+      diary: {},
       stats: { Physical: 0, Mental: 0, Social: 0, Financial: 0, Spiritual: 0 },
       xp: 0,
       inventory: [
@@ -65,6 +66,12 @@ const STORAGE = 'life-system-v2';
           : { text: String(item?.text || ''), done: Boolean(item?.done) }).filter(item => item.text) : []
       })).filter(task => task.text) : defaults.tasks,
       events: saved.events && typeof saved.events === 'object' ? saved.events : defaults.events,
+      diary: saved.diary && typeof saved.diary === 'object' && !Array.isArray(saved.diary)
+        ? Object.fromEntries(Object.entries(saved.diary).map(([date, entry]) => [date, {
+          feeling: String(entry?.feeling || ''),
+          entry: String(entry?.entry || '')
+        }]).filter(([, entry]) => entry.feeling || entry.entry))
+        : defaults.diary,
       xp: Number.isFinite(Number(saved.xp)) ? Math.max(0, Number(saved.xp)) : defaults.xp,
       inventory: normalizeInventory(saved.inventory ?? defaults.inventory),
       skills: normalizeSkills(saved.skills ?? defaults.skills),
@@ -199,6 +206,7 @@ const STORAGE = 'life-system-v2';
     renderStats();
     renderTasks();
     renderCalendar();
+    renderDiary();
     renderInventory();
     renderSkills();
     updateProgress();
@@ -216,6 +224,10 @@ const STORAGE = 'life-system-v2';
     const page = $(`${id}-page`);
     if (!page) return;
     if (id === 'calendar') renderCalendar();
+    if (id === 'diary') {
+      $('diaryDate').value = selectedDate;
+      renderDiary();
+    }
     if (id === 'tasks' || id === 'status') renderTasks();
     if (id === 'inventory') renderInventory();
     if (id === 'skills') renderSkills();
@@ -391,10 +403,11 @@ const STORAGE = 'life-system-v2';
       const key = iso(date);
       const events = state.events[key] || [];
       const taskCount = state.tasks.filter(task => task.date === key).length;
-      const count = events.length + taskCount;
+      const hasDiary = Boolean(state.diary[key]?.feeling || state.diary[key]?.entry);
+      const count = events.length + taskCount + Number(hasDiary);
       const day = document.createElement('div');
       day.className = `day ${date.getMonth() !== month ? 'other ' : ''}${key === today ? 'today ' : ''}${key === selectedDate ? 'selected' : ''}`;
-      day.innerHTML = `<button aria-label="${date.toLocaleDateString(undefined, { dateStyle: 'full' })}${count ? `, ${count} items` : ''}"><span class="day-number">${date.getDate()}</span>${count ? `<span class="day-indicator">${events.length ? `<i class="event-indicator">${events.length}</i>` : ''}${taskCount ? `<i class="task-indicator">${taskCount}</i>` : ''}</span>` : ''}</button>`;
+      day.innerHTML = `<button aria-label="${date.toLocaleDateString(undefined, { dateStyle: 'full' })}${count ? `, ${count} items` : ''}${hasDiary ? ', diary logged' : ''}"><span class="day-number">${date.getDate()}</span>${count ? `<span class="day-indicator">${events.length ? `<i class="event-indicator">${events.length}</i>` : ''}${taskCount ? `<i class="task-indicator">${taskCount}</i>` : ''}${hasDiary ? '<i class="diary-indicator" aria-label="Diary logged">✓</i>' : ''}</span>` : ''}</button>`;
       day.onclick = () => {
         selectedDate = key;
         renderCalendar();
@@ -404,7 +417,28 @@ const STORAGE = 'life-system-v2';
     $('selectedDateLabel').textContent = `Selected date: ${new Date(`${selectedDate}T12:00:00`).toLocaleDateString(undefined, { dateStyle: 'long' })}`;
     const events = state.events[selectedDate] || [];
     const tasks = state.tasks.map((task, index) => ({ task, index })).filter(({ task }) => task.date === selectedDate);
+    const diaryEntry = state.diary[selectedDate];
+    $('diaryCalendarStatus').textContent = diaryEntry?.feeling || diaryEntry?.entry
+      ? `Diary: Logged${diaryEntry.feeling ? ` · Feeling ${diaryEntry.feeling.toLowerCase()}` : ''}`
+      : 'Diary: Not logged yet';
     $('eventList').replaceChildren();
+    if (diaryEntry?.feeling || diaryEntry?.entry) {
+      const item = document.createElement('li');
+      item.className = 'calendar-diary';
+      const details = document.createElement('span');
+      const feeling = document.createElement('strong');
+      feeling.textContent = `Diary${diaryEntry.feeling ? ` · Feeling ${diaryEntry.feeling.toLowerCase()}` : ''}`;
+      const entry = document.createElement('span');
+      entry.textContent = diaryEntry.entry;
+      details.append(feeling, entry);
+      const editButton = document.createElement('button');
+      editButton.type = 'button';
+      editButton.dataset.page = 'diary';
+      editButton.textContent = 'Edit';
+      editButton.addEventListener('click', () => showPage('diary'));
+      item.append(details, editButton);
+      $('eventList').appendChild(item);
+    }
     events.forEach((event, index) => {
       const item = document.createElement('li');
       item.innerHTML = `<span>${escapeHtml(event)} <span class="badge event-badge">Event</span></span><button class="icon" aria-label="Delete event">×</button>`;
@@ -418,7 +452,7 @@ const STORAGE = 'life-system-v2';
       item.querySelector('input').onchange = event => toggleTask(index, event.target.checked);
       $('eventList').appendChild(item);
     });
-    if (!events.length && !tasks.length) {
+    if (!events.length && !tasks.length && !diaryEntry?.feeling && !diaryEntry?.entry) {
       const empty = document.createElement('li');
       empty.className = 'muted';
       empty.textContent = 'No events or tasks on this date.';
@@ -446,6 +480,36 @@ const STORAGE = 'life-system-v2';
     save();
     renderCalendar();
   }
+
+  function renderDiary() {
+    const date = $('diaryDate').value || selectedDate;
+    const entry = state.diary[date] || { feeling: '', entry: '' };
+    $('diaryDate').value = date;
+    $('diaryDateLabel').textContent = new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { dateStyle: 'long' });
+    $('diaryFeeling').value = entry.feeling;
+    $('diaryEntry').value = entry.entry;
+    $('diaryStatus').textContent = entry.feeling && entry.entry ? 'Entry saved' : 'No entry saved for this date';
+  }
+
+  $('diaryDate').addEventListener('change', () => {
+    selectedDate = $('diaryDate').value || today;
+    viewDate = new Date(`${selectedDate}T12:00:00`);
+    renderDiary();
+    renderCalendar();
+  });
+  $('diaryForm').addEventListener('submit', event => {
+    event.preventDefault();
+    const date = $('diaryDate').value;
+    state.diary[date] = {
+      feeling: $('diaryFeeling').value,
+      entry: $('diaryEntry').value.trim()
+    };
+    selectedDate = date;
+    viewDate = new Date(`${date}T12:00:00`);
+    save();
+    renderDiary();
+    renderCalendar();
+  });
 
   function renderInventory() {
     const list = $('inventoryList');
