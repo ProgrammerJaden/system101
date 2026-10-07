@@ -106,6 +106,7 @@ const STORAGE = 'life-system-v2';
   let loadingUserId = null;
   let saveTimer = null;
   let taskFilter = 'all';
+  let editingTask = null;
   let selectedDate = '';
   let viewDate = new Date();
   const iso = date => {
@@ -298,10 +299,42 @@ const STORAGE = 'life-system-v2';
     list.replaceChildren();
     visibleTasks().forEach(({ task, index }) => {
       const item = document.createElement('li');
-      const overdue = task.date && task.date < today && !task.done;
       item.className = 'task-item';
-      item.innerHTML = `<input class="task-check" type="checkbox" ${task.done ? 'checked' : ''} aria-label="Complete ${escapeHtml(task.text)}"><div class="task-content"><div class="task-title ${task.done ? 'completed' : ''}">${escapeHtml(task.text)}${task.date ? `<small class="task-date ${overdue ? 'overdue' : ''}">${overdue ? 'Overdue · ' : ''}${escapeHtml(task.date)}</small>` : ''}</div><div class="task-badges"><span class="badge priority-${task.priority.toLowerCase()}">${escapeHtml(task.priority)}</span><span class="badge category-${task.category.toLowerCase()}">${escapeHtml(task.category)}</span>${task.stat ? `<span class="badge stat-badge">+1 ${escapeHtml(task.stat)}</span>` : ''}</div><div class="subtask-list">${task.subtasks.map((subtask, subIndex) => `<label class="subtask"><input type="checkbox" data-subtask="${subIndex}" ${subtask.done ? 'checked' : ''}><span class="${subtask.done ? 'completed' : ''}">${escapeHtml(subtask.text)}</span></label>`).join('')}<form class="subtask-form"><input name="subtask" placeholder="Add checklist item" aria-label="Add checklist item"><button type="submit" aria-label="Add checklist item">+</button></form></div></div><button class="icon task-delete" aria-label="Delete ${escapeHtml(task.text)}">×</button>`;
+      const overdue = task.date && task.date < today && !task.done;
+      if (task === editingTask) {
+        item.classList.add('task-is-editing');
+        const form = document.createElement('form');
+        form.className = 'task-edit-form';
+        form.innerHTML = `<div class="task-edit-title"><label>Task name<input name="text" value="${escapeHtml(task.text)}" required></label></div><div><label>Due date<input name="date" type="date" value="${escapeHtml(task.date)}"></label></div><div><label>Priority<select name="priority">${['Low', 'Medium', 'High'].map(value => `<option${task.priority === value ? ' selected' : ''}>${value}</option>`).join('')}</select></label></div><div><label>Category<select name="category">${['Life', 'School', 'Work'].map(value => `<option${task.category === value ? ' selected' : ''}>${value}</option>`).join('')}</select></label></div><div><label>Reward stat<select name="stat"><option value="">No stat</option>${names.map(value => `<option${task.stat === value ? ' selected' : ''}>${value}</option>`).join('')}</select></label></div><div class="task-edit-actions"><button type="submit">Save</button><button type="button" class="task-edit-cancel">Cancel</button></div>`;
+        item.appendChild(form);
+        form.onsubmit = event => {
+          event.preventDefault();
+          const text = form.elements.text.value.trim();
+          if (!text) return;
+          task.text = text;
+          task.date = form.elements.date.value;
+          task.priority = form.elements.priority.value;
+          task.category = form.elements.category.value;
+          task.stat = form.elements.stat.value;
+          editingTask = null;
+          save();
+          renderTasks();
+          renderCalendar();
+        };
+        form.querySelector('.task-edit-cancel').onclick = () => {
+          editingTask = null;
+          renderTasks();
+        };
+        list.appendChild(item);
+        return;
+      }
+      item.innerHTML = `<div class="task-main"><input class="task-check" type="checkbox" ${task.done ? 'checked' : ''} aria-label="Complete ${escapeHtml(task.text)}"><div class="task-content"><div class="task-title ${task.done ? 'completed' : ''}">${escapeHtml(task.text)}${task.date ? `<small class="task-date ${overdue ? 'overdue' : ''}">${overdue ? 'Overdue · ' : ''}${escapeHtml(task.date)}</small>` : ''}</div><div class="task-badges"><span class="badge priority-${task.priority.toLowerCase()}">${escapeHtml(task.priority)}</span><span class="badge category-${task.category.toLowerCase()}">${escapeHtml(task.category)}</span>${task.stat ? `<span class="badge stat-badge">+1 ${escapeHtml(task.stat)}</span>` : ''}</div><div class="subtask-list">${task.subtasks.map((subtask, subIndex) => `<label class="subtask"><input type="checkbox" data-subtask="${subIndex}" ${subtask.done ? 'checked' : ''}><span class="${subtask.done ? 'completed' : ''}">${escapeHtml(subtask.text)}</span></label>`).join('')}<form class="subtask-form"><input name="subtask" placeholder="Add checklist item" aria-label="Add checklist item"><button type="submit" aria-label="Add checklist item">+</button></form></div></div></div><div class="task-actions"><button class="icon task-edit" type="button" aria-label="Edit ${escapeHtml(task.text)}" title="Edit task">✎</button><button class="icon task-delete" type="button" aria-label="Delete ${escapeHtml(task.text)}">×</button></div>`;
       item.querySelector('.task-check').onchange = event => toggleTask(index, event.target.checked);
+      item.querySelector('.task-edit').onclick = () => {
+        editingTask = task;
+        renderTasks();
+        $('taskList').querySelector('.task-edit-form [name="text"]').focus();
+      };
       item.querySelector('.task-delete').onclick = () => {
         state.tasks.splice(index, 1);
         save();
@@ -369,6 +402,7 @@ const STORAGE = 'life-system-v2';
   };
   $('clearCompleted').onclick = () => {
     state.tasks = state.tasks.filter(task => !task.done);
+    editingTask = null;
     save();
     renderTasks();
   };

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'daylight-club-shell-v3';
+const CACHE_NAME = 'daylight-club-shell-v9';
 const APP_SHELL = [
   './',
   './index.html',
