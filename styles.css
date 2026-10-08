@@ -243,6 +243,16 @@ html[data-theme="night"] .task-indicator { color:#bde1b8; background:#35463a; }
 }
 
 html { scroll-behavior:smooth; }
+
+.pomodoro-card { text-align:center; }
+.pomodoro-card .toolbar { text-align:left; margin-bottom:.25rem; }
+.pomodoro-card .toolbar p { margin:.25rem 0 0; }
+.pomodoro-time { display:block; margin:.65rem 0 .15rem; color:var(--text); font-family:"DM Mono",monospace; font-size:clamp(3rem,9vw,4.5rem); font-variant-numeric:tabular-nums; font-weight:500; line-height:1.15; }
+.pomodoro-status { min-height:1.5em; margin:.25rem 0 .85rem; }
+.pomodoro-controls { display:flex; justify-content:center; flex-wrap:wrap; gap:.5rem; }
+.pomodoro-controls #pomodoroToggle { background:var(--accent); border-color:var(--accent); color:var(--accent-ink); font-weight:800; }
+.pomodoro-settings { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.75rem; margin-top:1rem; text-align:left; }
+.pomodoro-settings input { min-width:0; }
 header { border:0; margin:0; padding:1.1rem 0 .8rem; }
 .brand { position:relative; justify-content:center; align-items:center; min-height:165px; padding:1rem 0; }
 .brand-lockup { flex-direction:column; justify-content:center; gap:.4rem; text-align:center; }

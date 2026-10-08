@@ -77,7 +77,21 @@
       <article class="card span-8"><h2>Profile</h2><div class="profile-grid"><div><label for="name">Name</label><input id="name" data-save="name" value="Jaden"></div><div><label for="level">Level</label><input id="level" data-save="level" value="1"></div><div><label for="title">Title</label><input id="title" data-save="title" value="Dr"></div><div><label for="rank">Rank</label><input id="rank" data-save="rank" value="D"></div></div><p><label for="motto">Motto</label><textarea id="motto" data-save="motto">I do my best no matter what.</textarea></p></article>
       <article class="card span-4"><h2>Today</h2><p class="muted">Completed tasks</p><strong id="taskSummary" class="task-summary">0/0</strong><div class="bar"><i id="taskBar"></i></div><div class="level-progress"><div><strong id="levelLabel">Level 1 · Rank D</strong><span id="xpLabel" class="muted">0 / 60 XP</span></div><div class="bar xp-bar"><i id="xpBar"></i></div></div></article>
       <article class="card span-6"><h2>Quick tasks</h2><ul id="quickTasks" class="list"></ul><button data-page="tasks">Open task manager →</button></article>
-      <article class="card span-6"><h2>Principle</h2><p class="quote">Progress is built from small actions repeated consistently.</p></article>
+      <article class="card span-6 pomodoro-card">
+        <div class="toolbar"><div><h2>Pomodoro timer</h2><p id="pomodoroMode" class="muted">Focus session</p></div></div>
+        <output id="pomodoroTime" class="pomodoro-time" aria-label="Time remaining">25:00</output>
+        <p id="pomodoroStatus" class="pomodoro-status muted" role="status" aria-live="polite">Ready when you are.</p>
+        <div class="pomodoro-controls">
+          <button id="pomodoroToggle" type="button">Start focus</button>
+          <button id="pomodoroReset" type="button">Reset</button>
+          <button id="pomodoroSwitch" type="button">Switch to break</button>
+          <button id="pomodoroStopSound" class="danger" type="button" hidden>Stop sound</button>
+        </div>
+        <div class="pomodoro-settings">
+          <div><label for="pomodoroFocusMinutes">Focus (minutes)</label><input id="pomodoroFocusMinutes" type="number" min="1" max="180" step="1" inputmode="numeric" required></div>
+          <div><label for="pomodoroBreakMinutes">Break (minutes)</label><input id="pomodoroBreakMinutes" type="number" min="1" max="180" step="1" inputmode="numeric" required></div>
+        </div>
+      </article>
     </div></section>
 
     <section id="tasks-page" class="page"><div class="card"><div class="toolbar"><div><h2>Tasks</h2><div class="muted">Plan actions and mark them complete.</div></div><button class="danger" id="clearCompleted">Clear completed</button></div><div class="task-filters" role="group" aria-label="Filter tasks"><button type="button" data-task-filter="all" aria-pressed="true">All</button><button type="button" data-task-filter="today" aria-pressed="false">Today</button><button type="button" data-task-filter="upcoming" aria-pressed="false">Upcoming</button><button type="button" data-task-filter="completed" aria-pressed="false">Completed</button></div><div class="add-row task-create"><input id="taskInput" placeholder="Add a task…" aria-label="Task name"><input id="taskDate" type="date" aria-label="Due date"><select id="taskPriority" aria-label="Priority"><option>Low</option><option selected>Medium</option><option>High</option></select><select id="taskCategory" aria-label="Category"><option>Life</option><option>School</option><option>Work</option></select><select id="taskStat" aria-label="Reward stat"><option value="">No stat</option><option>Physical</option><option>Mental</option><option>Social</option><option>Financial</option><option>Spiritual</option></select><button id="addTask">Add task</button></div><ul id="taskList" class="list task-list"></ul></div></section>

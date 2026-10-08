@@ -21,6 +21,7 @@ const STORAGE = 'life-system-v2';
       ],
       skills: ['HTML', 'CSS', 'JavaScript', 'Python'],
       notifications: 'No new notifications.',
+      pomodoro: { focusMinutes: 25, breakMinutes: 5 },
       swot: {
         strengths: ['Curiosity', 'Persistence'],
         weaknesses: ['Distractions', 'Inconsistent routines'],
@@ -75,6 +76,14 @@ const STORAGE = 'life-system-v2';
       xp: Number.isFinite(Number(saved.xp)) ? Math.max(0, Number(saved.xp)) : defaults.xp,
       inventory: normalizeInventory(saved.inventory ?? defaults.inventory),
       skills: normalizeSkills(saved.skills ?? defaults.skills),
+      pomodoro: {
+        focusMinutes: Number.isInteger(Number(saved.pomodoro?.focusMinutes))
+          && Number(saved.pomodoro.focusMinutes) >= 1 && Number(saved.pomodoro.focusMinutes) <= 180
+          ? Number(saved.pomodoro.focusMinutes) : defaults.pomodoro.focusMinutes,
+        breakMinutes: Number.isInteger(Number(saved.pomodoro?.breakMinutes))
+          && Number(saved.pomodoro.breakMinutes) >= 1 && Number(saved.pomodoro.breakMinutes) <= 180
+          ? Number(saved.pomodoro.breakMinutes) : defaults.pomodoro.breakMinutes
+      },
       swot: Object.fromEntries(swotSections.map(section => [
         section,
         Array.isArray(saved.swot?.[section]) ? saved.swot[section] : defaults.swot[section]
@@ -108,6 +117,13 @@ const STORAGE = 'life-system-v2';
   let taskFilter = 'all';
   let editingTask = null;
   let selectedDate = '';
+  let pomodoroMode = 'focus';
+  let pomodoroRemainingSeconds = 25 * 60;
+  let pomodoroDeadline = 0;
+  let pomodoroInterval = null;
+  let pomodoroRunning = false;
+  let pomodoroAudioContext = null;
+  let pomodoroSoundInterval = null;
   let viewDate = new Date();
   const iso = date => {
     const value = new Date(date);
@@ -210,7 +226,167 @@ const STORAGE = 'life-system-v2';
     renderDiary();
     renderInventory();
     renderSkills();
+    $('pomodoroFocusMinutes').value = state.pomodoro.focusMinutes;
+    $('pomodoroBreakMinutes').value = state.pomodoro.breakMinutes;
+    resetPomodoro('Ready when you are.');
     updateProgress();
+  }
+
+  function pomodoroDuration() {
+    const minutes = pomodoroMode === 'focus'
+      ? state.pomodoro.focusMinutes
+      : state.pomodoro.breakMinutes;
+    return minutes * 60;
+  }
+
+  function paintPomodoro() {
+    const minutes = Math.floor(pomodoroRemainingSeconds / 60);
+    const seconds = pomodoroRemainingSeconds % 60;
+    $('pomodoroTime').textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    $('pomodoroMode').textContent = pomodoroMode === 'focus' ? 'Focus session' : 'Break';
+    $('pomodoroToggle').textContent = pomodoroRunning
+      ? 'Pause'
+      : `Start ${pomodoroMode}`;
+    $('pomodoroSwitch').textContent = `Switch to ${pomodoroMode === 'focus' ? 'break' : 'focus'}`;
+  }
+
+  function resetPomodoro(message = 'Timer reset.') {
+    clearInterval(pomodoroInterval);
+    pomodoroInterval = null;
+    pomodoroRunning = false;
+    pomodoroDeadline = 0;
+    pomodoroRemainingSeconds = pomodoroDuration();
+    paintPomodoro();
+    $('pomodoroStatus').textContent = message;
+  }
+
+  function preparePomodoroAudio() {
+    const AudioContextConstructor = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextConstructor) return false;
+    try {
+      pomodoroAudioContext ??= new AudioContextConstructor();
+      if (pomodoroAudioContext.state === 'suspended') {
+        void pomodoroAudioContext.resume().catch(error => {
+          console.error('Could not enable the Pomodoro timer sound:', error);
+        });
+      }
+      return true;
+    } catch (error) {
+      console.error('Could not initialize the Pomodoro timer sound:', error);
+      return false;
+    }
+  }
+
+  async function playPomodoroChime() {
+    if (!pomodoroAudioContext) return false;
+    if (pomodoroAudioContext.state === 'suspended') {
+      await pomodoroAudioContext.resume();
+    }
+    if (pomodoroAudioContext.state !== 'running') return false;
+
+    const notes = [784, 988, 1175];
+    const startTime = pomodoroAudioContext.currentTime;
+    notes.forEach((frequency, index) => {
+      const start = startTime + index * 0.32;
+      const oscillator = pomodoroAudioContext.createOscillator();
+      const volume = pomodoroAudioContext.createGain();
+      oscillator.type = 'sine';
+      oscillator.frequency.value = frequency;
+      volume.gain.setValueAtTime(0.0001, start);
+      volume.gain.exponentialRampToValueAtTime(0.4, start + 0.025);
+      volume.gain.exponentialRampToValueAtTime(0.0001, start + 0.28);
+      oscillator.connect(volume);
+      volume.connect(pomodoroAudioContext.destination);
+      oscillator.start(start);
+      oscillator.stop(start + 0.3);
+    });
+    return true;
+  }
+
+  async function startPomodoroSound() {
+    const played = await playPomodoroChime();
+    if (!played) return false;
+    $('pomodoroStopSound').hidden = false;
+    pomodoroSoundInterval = setInterval(() => {
+      void playPomodoroChime().catch(error => {
+        console.error('Could not continue the Pomodoro timer sound:', error);
+        stopPomodoroSound();
+        $('pomodoroStatus').textContent = 'Sound alert could not be played.';
+      });
+    }, 1300);
+    return true;
+  }
+
+  function stopPomodoroSound() {
+    clearInterval(pomodoroSoundInterval);
+    pomodoroSoundInterval = null;
+    $('pomodoroStopSound').hidden = true;
+  }
+
+  function tickPomodoro() {
+    pomodoroRemainingSeconds = Math.max(0, Math.ceil((pomodoroDeadline - Date.now()) / 1000));
+    paintPomodoro();
+    if (pomodoroRemainingSeconds === 0) {
+      clearInterval(pomodoroInterval);
+      pomodoroInterval = null;
+      pomodoroRunning = false;
+      $('pomodoroStatus').textContent = pomodoroMode === 'focus'
+        ? 'Focus session complete. Take a break or reset your timer.'
+        : 'Break complete. Switch back to focus when you are ready.';
+      paintPomodoro();
+      void startPomodoroSound().then(played => {
+        if (!played) $('pomodoroStatus').textContent += ' Sound alert is unavailable in this browser.';
+      }).catch(error => {
+        console.error('Could not play the Pomodoro timer sound:', error);
+        $('pomodoroStatus').textContent += ' Sound alert could not be played.';
+      });
+    }
+  }
+
+  function initializePomodoro() {
+    $('pomodoroStopSound').addEventListener('click', () => {
+      stopPomodoroSound();
+      $('pomodoroStatus').textContent = 'Sound stopped.';
+    });
+    $('pomodoroToggle').addEventListener('click', () => {
+      if (pomodoroRunning) {
+        tickPomodoro();
+        if (!pomodoroRunning) return;
+        clearInterval(pomodoroInterval);
+        pomodoroInterval = null;
+        pomodoroRunning = false;
+        pomodoroRemainingSeconds = Math.max(0, Math.ceil((pomodoroDeadline - Date.now()) / 1000));
+        $('pomodoroStatus').textContent = 'Timer paused.';
+        paintPomodoro();
+        return;
+      }
+      if (pomodoroRemainingSeconds === 0) pomodoroRemainingSeconds = pomodoroDuration();
+      preparePomodoroAudio();
+      pomodoroDeadline = Date.now() + pomodoroRemainingSeconds * 1000;
+      pomodoroRunning = true;
+      $('pomodoroStatus').textContent = `${pomodoroMode === 'focus' ? 'Focus' : 'Break'} session in progress.`;
+      paintPomodoro();
+      pomodoroInterval = setInterval(tickPomodoro, 1000);
+    });
+    $('pomodoroReset').addEventListener('click', () => resetPomodoro());
+    $('pomodoroSwitch').addEventListener('click', () => {
+      pomodoroMode = pomodoroMode === 'focus' ? 'break' : 'focus';
+      resetPomodoro(`${pomodoroMode === 'focus' ? 'Focus' : 'Break'} timer ready.`);
+    });
+    [['pomodoroFocusMinutes', 'focusMinutes'], ['pomodoroBreakMinutes', 'breakMinutes']]
+      .forEach(([id, setting]) => {
+        $(id).addEventListener('change', event => {
+          const input = event.currentTarget;
+          if (!input.reportValidity()) {
+            input.value = state.pomodoro[setting];
+            return;
+          }
+          state.pomodoro[setting] = Number(input.value);
+          save();
+          resetPomodoro('Duration saved. Timer reset.');
+        });
+      });
+    paintPomodoro();
   }
 
   document.querySelectorAll('[data-save]').forEach(element => {
@@ -810,6 +986,7 @@ const STORAGE = 'life-system-v2';
   async function initializeAuthentication() {
     initializeAppearance();
     initializePwa();
+    initializePomodoro();
     $('todayLabel').textContent = new Date().toLocaleDateString(undefined, { dateStyle: 'medium' });
     $('rememberMe').checked = localStorage.getItem(REMEMBER_KEY) !== 'false';
     applyStateToPage();
