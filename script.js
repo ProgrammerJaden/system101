@@ -13,14 +13,17 @@ const STORAGE = 'life-system-v2';
       events: {},
       diary: {},
       stats: { Physical: 0, Mental: 0, Social: 0, Financial: 0, Spiritual: 0 },
+      statsResetVersion: 0,
       xp: 0,
       inventory: [
         { name: 'Laptop', category: 'Tech' },
         { name: 'Notebook', category: 'Study' },
         { name: 'Pen', category: 'Study' }
       ],
+      shoppingList: [],
+      notebooks: [],
+      notesMigrationVersion: 1,
       skills: ['HTML', 'CSS', 'JavaScript', 'Python'],
-      notifications: 'No new notifications.',
       pomodoro: { focusMinutes: 25, breakMinutes: 5 },
       swot: {
         strengths: ['Curiosity', 'Persistence'],
@@ -44,23 +47,79 @@ const STORAGE = 'life-system-v2';
     return entries.map(skill => String(skill).trim()).filter(Boolean);
   }
 
+  function createId() {
+    return globalThis.crypto?.randomUUID?.()
+      || `note-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  }
+
+  function normalizeNotebooks(value) {
+    if (!Array.isArray(value)) return [];
+    return value.map(notebook => ({
+      id: String(notebook?.id || createId()),
+      name: String(notebook?.name || 'Untitled notebook'),
+      pages: Array.isArray(notebook?.pages) ? notebook.pages.map(page => ({
+        id: String(page?.id || createId()),
+        title: String(page?.title || 'Untitled page'),
+        content: String(page?.content || ''),
+        subpages: Array.isArray(page?.subpages) ? page.subpages.map(subpage => ({
+          id: String(subpage?.id || createId()),
+          title: String(subpage?.title || 'Untitled subpage'),
+          content: String(subpage?.content || '')
+        })) : []
+      })) : []
+    }));
+  }
+
+  function normalizeShoppingList(value) {
+    if (!Array.isArray(value)) return [];
+    return value.map(item => ({
+      id: String(item?.id || createId()),
+      name: String(item?.name || '').trim(),
+      done: Boolean(item?.done)
+    })).filter(item => item.name);
+  }
+
   function normalizeState(value) {
     const defaults = defaultState();
     const saved = value && typeof value === 'object' ? value : {};
+    const notebooks = normalizeNotebooks(saved.notebooks);
+    const notesMigrationVersion = Number(saved.notesMigrationVersion) || 0;
+    const legacyNotes = String(saved.notifications || '').trim();
+    if (!notebooks.length && notesMigrationVersion < 1
+      && legacyNotes && legacyNotes !== 'No new notifications.') {
+      notebooks.push({
+        id: createId(),
+        name: 'My Notebook',
+        pages: [{
+          id: createId(),
+          title: 'Imported notes',
+          content: legacyNotes,
+          subpages: []
+        }]
+      });
+    }
     return {
       ...defaults,
       ...saved,
       profile: { ...defaults.profile, ...(saved.profile || {}) },
       stats: { ...defaults.stats, ...(saved.stats || {}) },
+      statsResetVersion: Number(saved.statsResetVersion) || 0,
       tasks: Array.isArray(saved.tasks) ? saved.tasks.map(task => ({
         ...task,
         text: String(task?.text || ''),
         date: String(task?.date || ''),
+        time: String(task?.time || ''),
+        notes: String(task?.notes || ''),
         done: Boolean(task?.done),
         priority: ['Low', 'Medium', 'High'].includes(task?.priority) ? task.priority : 'Medium',
-        category: ['School', 'Work', 'Life'].includes(task?.category) ? task.category : 'Life',
+        category: task?.category == null ? 'Life' : String(task.category).trim(),
+        repeat: ['daily', 'weekdays', 'weekends', 'weekly', 'monthly', 'custom'].includes(task?.repeat) ? task.repeat : 'none',
+        repeatInterval: Number.isInteger(Number(task?.repeatInterval)) && Number(task.repeatInterval) >= 1 && Number(task.repeatInterval) <= 365
+          ? Number(task.repeatInterval) : 1,
+        repeatUnit: ['days', 'weeks', 'months'].includes(task?.repeatUnit) ? task.repeatUnit : 'days',
         stat: names.includes(task?.stat) ? task.stat : '',
         xpClaimed: Boolean(task?.xpClaimed),
+        statClaimed: Boolean(task?.statClaimed),
         completedAt: String(task?.completedAt || ''),
         subtasks: Array.isArray(task?.subtasks) ? task.subtasks.map(item => typeof item === 'string'
           ? { text: item, done: false }
@@ -75,6 +134,10 @@ const STORAGE = 'life-system-v2';
         : defaults.diary,
       xp: Number.isFinite(Number(saved.xp)) ? Math.max(0, Number(saved.xp)) : defaults.xp,
       inventory: normalizeInventory(saved.inventory ?? defaults.inventory),
+      shoppingList: normalizeShoppingList(saved.shoppingList),
+      notebooks,
+      notesMigrationVersion: 1,
+      notifications: '',
       skills: normalizeSkills(saved.skills ?? defaults.skills),
       pomodoro: {
         focusMinutes: Number.isInteger(Number(saved.pomodoro?.focusMinutes))
@@ -116,6 +179,7 @@ const STORAGE = 'life-system-v2';
   let saveTimer = null;
   let taskFilter = 'all';
   let editingTask = null;
+  let selectedNote = { notebookId: '', pageId: '', subpageId: '' };
   let selectedDate = '';
   let pomodoroMode = 'focus';
   let pomodoroRemainingSeconds = 25 * 60;
@@ -159,8 +223,6 @@ const STORAGE = 'life-system-v2';
         .filter(element => ['name', 'level', 'title', 'rank', 'motto'].includes(element.dataset.save))
         .map(element => [element.dataset.save, element.value])
     );
-    const notificationsField = $('notifications');
-    state.notifications = notificationsField ? notificationsField.value : state.notifications ?? 'No new notifications.';
     state.swot = Object.fromEntries(swotSections.map(section => [
       section,
       [...$(`${section}-list`).querySelectorAll('li')]
@@ -208,10 +270,6 @@ const STORAGE = 'life-system-v2';
     for (const field of ['name', 'level', 'title', 'rank', 'motto']) {
       $(`${field}`).value = state.profile[field] ?? '';
     }
-    const notificationsField = $('notifications');
-    if (notificationsField) {
-      notificationsField.value = state.notifications ?? 'No new notifications.';
-    }
     for (const section of swotSections) {
       const list = $(`${section}-list`);
       list.replaceChildren(...state.swot[section].map(text => {
@@ -225,7 +283,9 @@ const STORAGE = 'life-system-v2';
     renderCalendar();
     renderDiary();
     renderInventory();
+    renderShoppingList();
     renderSkills();
+    renderNotebooks();
     $('pomodoroFocusMinutes').value = state.pomodoro.focusMinutes;
     $('pomodoroBreakMinutes').value = state.pomodoro.breakMinutes;
     resetPomodoro('Ready when you are.');
@@ -405,9 +465,13 @@ const STORAGE = 'life-system-v2';
       $('diaryDate').value = selectedDate;
       renderDiary();
     }
-    if (id === 'tasks' || id === 'status') renderTasks();
+    if (id === 'tasks' || id === 'today') renderTasks();
     if (id === 'inventory') renderInventory();
-    if (id === 'skills') renderSkills();
+    if (id === 'status') {
+      renderSkills();
+      renderStats();
+    }
+    if (id === 'notes') renderNotebooks();
     page.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
@@ -447,12 +511,58 @@ const STORAGE = 'life-system-v2';
   function toggleTask(index, done) {
     const task = state.tasks[index];
     if (!task) return;
+    const wasDone = task.done;
     task.done = done;
     task.completedAt = done ? today : '';
+    if (done && !wasDone && task.repeat !== 'none') {
+      const [year, month, day] = (task.date || today).split('-').map(Number);
+      const nextDate = new Date(year, month - 1, day);
+      const repeatDay = nextDate.getDate();
+      const advanceMonth = () => {
+        nextDate.setDate(1);
+        nextDate.setMonth(nextDate.getMonth() + 1);
+        const lastDay = new Date(nextDate.getFullYear(), nextDate.getMonth() + 1, 0).getDate();
+        nextDate.setDate(Math.min(repeatDay, lastDay));
+      };
+      const advanceRepeat = () => {
+        if (task.repeat === 'daily') nextDate.setDate(nextDate.getDate() + 1);
+        if (task.repeat === 'weekly') nextDate.setDate(nextDate.getDate() + 7);
+        if (task.repeat === 'monthly') advanceMonth();
+        if (task.repeat === 'weekdays' || task.repeat === 'weekends') {
+          do {
+            nextDate.setDate(nextDate.getDate() + 1);
+          } while (task.repeat === 'weekdays'
+            ? nextDate.getDay() === 0 || nextDate.getDay() === 6
+            : nextDate.getDay() !== 0 && nextDate.getDay() !== 6);
+        }
+        if (task.repeat === 'custom') {
+          const interval = task.repeatInterval || 1;
+          if (task.repeatUnit === 'days') nextDate.setDate(nextDate.getDate() + interval);
+          if (task.repeatUnit === 'weeks') nextDate.setDate(nextDate.getDate() + interval * 7);
+          if (task.repeatUnit === 'months') {
+            for (let step = 0; step < interval; step++) advanceMonth();
+          }
+        }
+      };
+      advanceRepeat();
+      while (iso(nextDate) <= today) advanceRepeat();
+      state.tasks.push({
+        ...task,
+        date: iso(nextDate),
+        done: false,
+        xpClaimed: false,
+        statClaimed: false,
+        completedAt: '',
+        subtasks: task.subtasks.map(subtask => ({ ...subtask, done: false }))
+      });
+    }
     if (done && !task.xpClaimed) {
       state.xp += 10;
       task.xpClaimed = true;
-      if (task.stat) state.stats[task.stat] = (state.stats[task.stat] || 0) + 1;
+    }
+    if (done && !task.statClaimed && task.stat) {
+      state.stats[task.stat] = (state.stats[task.stat] || 0) + 1;
+      task.statClaimed = true;
     }
     save();
     renderTasks();
@@ -471,6 +581,7 @@ const STORAGE = 'life-system-v2';
   }
 
   function renderTasks() {
+    updateTaskCategorySuggestions();
     const list = $('taskList');
     list.replaceChildren();
     visibleTasks().forEach(({ task, index }) => {
@@ -481,19 +592,31 @@ const STORAGE = 'life-system-v2';
         item.classList.add('task-is-editing');
         const form = document.createElement('form');
         form.className = 'task-edit-form';
-        form.innerHTML = `<div class="task-edit-title"><label>Task name<input name="text" value="${escapeHtml(task.text)}" required></label></div><div><label>Due date<input name="date" type="date" value="${escapeHtml(task.date)}"></label></div><div><label>Priority<select name="priority">${['Low', 'Medium', 'High'].map(value => `<option${task.priority === value ? ' selected' : ''}>${value}</option>`).join('')}</select></label></div><div><label>Category<select name="category">${['Life', 'School', 'Work'].map(value => `<option${task.category === value ? ' selected' : ''}>${value}</option>`).join('')}</select></label></div><div><label>Reward stat<select name="stat"><option value="">No stat</option>${names.map(value => `<option${task.stat === value ? ' selected' : ''}>${value}</option>`).join('')}</select></label></div><div class="task-edit-actions"><button type="submit">Save</button><button type="button" class="task-edit-cancel">Cancel</button></div>`;
+        form.innerHTML = `<div class="task-edit-title"><label>Task name<input name="text" value="${escapeHtml(task.text)}" required></label></div><div><label>Due date<input name="date" type="date" value="${escapeHtml(task.date)}"></label></div><div><label>Time<input name="time" type="time" value="${escapeHtml(task.time)}"></label></div><div><label>Priority<select name="priority">${['Low', 'Medium', 'High'].map(value => `<option${task.priority === value ? ' selected' : ''}>${value}</option>`).join('')}</select></label></div><div><label>Category<input name="category" list="taskCategories" value="${escapeHtml(task.category)}" placeholder="Name a category"></label></div><div><label>Repeat<select name="repeat">${[['none', 'Does not repeat'], ['daily', 'Daily'], ['weekdays', 'Weekdays'], ['weekends', 'Weekends'], ['weekly', 'Weekly'], ['monthly', 'Monthly'], ['custom', 'Custom interval']].map(([value, label]) => `<option value="${value}"${task.repeat === value ? ' selected' : ''}>${label}</option>`).join('')}</select></label></div><div class="task-edit-custom-repeat" ${task.repeat === 'custom' ? '' : 'hidden'}><label>Every<input name="repeatInterval" type="number" min="1" max="365" step="1" value="${task.repeatInterval}" required ${task.repeat === 'custom' ? '' : 'disabled'}></label><label>Unit<select name="repeatUnit" ${task.repeat === 'custom' ? '' : 'disabled'}>${[['days', 'Days'], ['weeks', 'Weeks'], ['months', 'Months']].map(([value, label]) => `<option value="${value}"${task.repeatUnit === value ? ' selected' : ''}>${label}</option>`).join('')}</select></label></div><div><label>Reward stat<select name="stat"><option value="">No stat</option>${names.map(value => `<option${task.stat === value ? ' selected' : ''}>${value}</option>`).join('')}</select></label></div><div class="task-edit-notes"><label>Notes<textarea name="notes" placeholder="Add notes…">${escapeHtml(task.notes)}</textarea></label></div><div class="task-edit-actions"><button type="submit">Save</button><button type="button" class="task-edit-cancel">Cancel</button></div>`;
         item.appendChild(form);
+        form.elements.repeat.onchange = () => {
+          const isCustom = form.elements.repeat.value === 'custom';
+          const customFields = form.querySelector('.task-edit-custom-repeat');
+          customFields.hidden = !isCustom;
+          customFields.querySelectorAll('input, select').forEach(field => { field.disabled = !isCustom; });
+        };
         form.onsubmit = event => {
           event.preventDefault();
           const text = form.elements.text.value.trim();
           if (!text) return;
           task.text = text;
           task.date = form.elements.date.value;
+          task.time = form.elements.time.value;
+          task.notes = form.elements.notes.value.trim();
           task.priority = form.elements.priority.value;
-          task.category = form.elements.category.value;
+          task.category = form.elements.category.value.trim();
+          task.repeat = form.elements.repeat.value;
+          task.repeatInterval = Number(form.elements.repeatInterval.value);
+          task.repeatUnit = form.elements.repeatUnit.value;
           task.stat = form.elements.stat.value;
           editingTask = null;
           save();
+          updateTaskCategorySuggestions();
           renderTasks();
           renderCalendar();
         };
@@ -504,7 +627,11 @@ const STORAGE = 'life-system-v2';
         list.appendChild(item);
         return;
       }
-      item.innerHTML = `<div class="task-main"><input class="task-check" type="checkbox" ${task.done ? 'checked' : ''} aria-label="Complete ${escapeHtml(task.text)}"><div class="task-content"><div class="task-title ${task.done ? 'completed' : ''}">${escapeHtml(task.text)}${task.date ? `<small class="task-date ${overdue ? 'overdue' : ''}">${overdue ? 'Overdue · ' : ''}${escapeHtml(task.date)}</small>` : ''}</div><div class="task-badges"><span class="badge priority-${task.priority.toLowerCase()}">${escapeHtml(task.priority)}</span><span class="badge category-${task.category.toLowerCase()}">${escapeHtml(task.category)}</span>${task.stat ? `<span class="badge stat-badge">+1 ${escapeHtml(task.stat)}</span>` : ''}</div><div class="subtask-list">${task.subtasks.map((subtask, subIndex) => `<label class="subtask"><input type="checkbox" data-subtask="${subIndex}" ${subtask.done ? 'checked' : ''}><span class="${subtask.done ? 'completed' : ''}">${escapeHtml(subtask.text)}</span></label>`).join('')}<form class="subtask-form"><input name="subtask" placeholder="Add checklist item" aria-label="Add checklist item"><button type="submit" aria-label="Add checklist item">+</button></form></div></div></div><div class="task-actions"><button class="icon task-edit" type="button" aria-label="Edit ${escapeHtml(task.text)}" title="Edit task">✎</button><button class="icon task-delete" type="button" aria-label="Delete ${escapeHtml(task.text)}">×</button></div>`;
+      const repeatLabels = { daily: 'Daily', weekdays: 'Weekdays', weekends: 'Weekends', weekly: 'Weekly', monthly: 'Monthly' };
+      const repeatLabel = task.repeat === 'custom'
+        ? `Every ${task.repeatInterval} ${task.repeatUnit.replace(/s$/, task.repeatInterval === 1 ? '' : 's')}`
+        : repeatLabels[task.repeat];
+      item.innerHTML = `<div class="task-main"><input class="task-check" type="checkbox" ${task.done ? 'checked' : ''} aria-label="Complete ${escapeHtml(task.text)}"><div class="task-content"><div class="task-title ${task.done ? 'completed' : ''}">${escapeHtml(task.text)}${task.date ? `<small class="task-date ${overdue ? 'overdue' : ''}">${overdue ? 'Overdue · ' : ''}${escapeHtml(task.date)}${task.time ? ` · ${escapeHtml(task.time)}` : ''}</small>` : task.time ? `<small class="task-date">${escapeHtml(task.time)}</small>` : ''}</div><div class="task-badges"><span class="badge priority-${task.priority.toLowerCase()}">${escapeHtml(task.priority)}</span>${task.category ? `<span class="badge category-tag">${escapeHtml(task.category)}</span>` : ''}${repeatLabel ? `<span class="badge">${escapeHtml(repeatLabel)}</span>` : ''}${task.stat ? `<span class="badge stat-badge">+1 ${escapeHtml(task.stat)}</span>` : ''}</div>${task.notes ? `<p class="task-notes">${escapeHtml(task.notes)}</p>` : ''}<div class="subtask-list">${task.subtasks.map((subtask, subIndex) => `<label class="subtask"><input type="checkbox" data-subtask="${subIndex}" ${subtask.done ? 'checked' : ''}><span class="${subtask.done ? 'completed' : ''}">${escapeHtml(subtask.text)}</span></label>`).join('')}<form class="subtask-form"><input name="subtask" placeholder="Add checklist item" aria-label="Add checklist item"><button type="submit" aria-label="Add checklist item">+</button></form></div></div></div><div class="task-actions"><button class="icon task-edit" type="button" aria-label="Edit ${escapeHtml(task.text)}" title="Edit task">✎</button><button class="icon task-delete" type="button" aria-label="Delete ${escapeHtml(task.text)}">×</button></div>`;
       item.querySelector('.task-check').onchange = event => toggleTask(index, event.target.checked);
       item.querySelector('.task-edit').onclick = () => {
         editingTask = task;
@@ -555,22 +682,57 @@ const STORAGE = 'life-system-v2';
     };
   });
 
+  function updateTaskCategorySuggestions() {
+    const categories = [...new Set(state.tasks.map(task => task.category).filter(Boolean))];
+    $('taskCategories').innerHTML = categories.map(category => `<option value="${escapeHtml(category)}"></option>`).join('');
+  }
+
+  updateTaskCategorySuggestions();
+
+  const updateCustomRepeatVisibility = () => {
+    const isCustom = $('taskRepeat').value === 'custom';
+    $('taskCustomRepeat').hidden = !isCustom;
+    $('taskCustomRepeat').querySelectorAll('input, select').forEach(field => { field.disabled = !isCustom; });
+  };
+  $('taskRepeat').addEventListener('change', updateCustomRepeatVisibility);
+  updateCustomRepeatVisibility();
+
   $('addTask').onclick = () => {
     const text = $('taskInput').value.trim();
     if (!text) return;
+    const repeatInterval = Number($('taskRepeatInterval').value);
+    if ($('taskRepeat').value === 'custom'
+      && (!Number.isInteger(repeatInterval) || repeatInterval < 1 || repeatInterval > 365)) {
+      $('taskRepeatInterval').focus();
+      return;
+    }
     state.tasks.push({
       text,
       date: $('taskDate').value,
+      time: $('taskTime').value,
+      notes: $('taskNotes').value.trim(),
       done: false,
       priority: $('taskPriority').value,
-      category: $('taskCategory').value,
+      category: $('taskCategory').value.trim(),
+      repeat: $('taskRepeat').value,
+      repeatInterval,
+      repeatUnit: $('taskRepeatUnit').value,
       stat: $('taskStat').value,
       xpClaimed: false,
+      statClaimed: false,
       completedAt: '',
       subtasks: []
     });
     $('taskInput').value = '';
+    $('taskTime').value = '';
+    $('taskNotes').value = '';
+    $('taskCategory').value = '';
+    $('taskRepeat').value = 'none';
+    $('taskRepeatInterval').value = '1';
+    $('taskRepeatUnit').value = 'days';
+    updateCustomRepeatVisibility();
     save();
+    updateTaskCategorySuggestions();
     renderTasks();
   };
   $('taskInput').onkeydown = event => {
@@ -584,19 +746,11 @@ const STORAGE = 'life-system-v2';
   };
 
   function renderStats() {
-    $('stats').innerHTML = names.map(name => `<div class="stat-row"><span>${name}</span><div class="bar"><i id="bar-${name}"></i></div><button class="icon" data-stat="${name}">${state.stats[name] || 0} +</button></div>`).join('');
+    $('stats').innerHTML = names.map(name => `<div class="stat-row"><span>${name}</span><div class="bar"><i id="bar-${name}"></i></div><strong>${state.stats[name] || 0}</strong></div>`).join('');
     names.forEach(name => {
       $(`bar-${name}`).style.width = `${Math.min((state.stats[name] || 0) * 10, 100)}%`;
     });
   }
-  $('stats').addEventListener('click', event => {
-    const button = event.target.closest('[data-stat]');
-    if (!button) return;
-    const name = button.dataset.stat;
-    state.stats[name] = (state.stats[name] || 0) + 1;
-    renderStats();
-    save();
-  });
 
   function renderCalendar() {
     const year = viewDate.getFullYear();
@@ -771,6 +925,51 @@ const STORAGE = 'life-system-v2';
     if (event.key === 'Enter') $('addInventoryItem').click();
   };
 
+  function renderShoppingList() {
+    const list = $('shoppingList');
+    list.replaceChildren(...state.shoppingList.map((entry, index) => {
+      const item = document.createElement('li');
+      item.className = `shopping-item${entry.done ? ' completed' : ''}`;
+      const label = document.createElement('label');
+      label.className = 'shopping-check';
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.checked = entry.done;
+      checkbox.setAttribute('aria-label', `Mark ${entry.name} ${entry.done ? 'not bought' : 'bought'}`);
+      const name = document.createElement('span');
+      name.textContent = entry.name;
+      label.append(checkbox, name);
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'icon';
+      remove.setAttribute('aria-label', `Remove ${entry.name} from shopping list`);
+      remove.textContent = '×';
+      checkbox.addEventListener('change', () => {
+        entry.done = checkbox.checked;
+        save();
+        renderShoppingList();
+      });
+      remove.addEventListener('click', () => {
+        state.shoppingList.splice(index, 1);
+        save();
+        renderShoppingList();
+      });
+      item.append(label, remove);
+      return item;
+    }));
+    $('shoppingCount').textContent = `${state.shoppingList.filter(item => !item.done).length} to buy`;
+  }
+
+  $('shoppingForm').addEventListener('submit', event => {
+    event.preventDefault();
+    const name = $('shoppingInput').value.trim();
+    if (!name) return;
+    state.shoppingList.push({ id: createId(), name, done: false });
+    $('shoppingInput').value = '';
+    save();
+    renderShoppingList();
+  });
+
   function renderSkills() {
     const list = $('skillList');
     list.replaceChildren(...state.skills.map((skill, index) => {
@@ -796,6 +995,193 @@ const STORAGE = 'life-system-v2';
   $('skillInput').onkeydown = event => {
     if (event.key === 'Enter') $('addSkill').click();
   };
+
+  function getSelectedNote() {
+    const notebook = state.notebooks.find(entry => entry.id === selectedNote.notebookId);
+    const page = notebook?.pages.find(entry => entry.id === selectedNote.pageId);
+    const note = selectedNote.subpageId
+      ? page?.subpages.find(entry => entry.id === selectedNote.subpageId)
+      : page;
+    return { notebook, page, note };
+  }
+
+  function renderNotebooks() {
+    const tree = $('notebookTree');
+    tree.replaceChildren();
+    if (!state.notebooks.some(notebook => notebook.id === selectedNote.notebookId)) {
+      selectedNote = { notebookId: state.notebooks[0]?.id || '', pageId: '', subpageId: '' };
+    }
+    const selectedNotebook = state.notebooks.find(notebook => notebook.id === selectedNote.notebookId);
+    if (!selectedNotebook?.pages.some(page => page.id === selectedNote.pageId)) {
+      selectedNote.pageId = selectedNotebook?.pages[0]?.id || '';
+      selectedNote.subpageId = '';
+    }
+    const selectedPage = selectedNotebook?.pages.find(page => page.id === selectedNote.pageId);
+    if (!selectedPage?.subpages.some(page => page.id === selectedNote.subpageId)) {
+      selectedNote.subpageId = '';
+    }
+
+    state.notebooks.forEach(notebook => {
+      const group = document.createElement('section');
+      group.className = 'notebook-group';
+      const header = document.createElement('div');
+      header.className = 'notebook-heading';
+      const name = document.createElement('input');
+      name.value = notebook.name;
+      name.setAttribute('aria-label', 'Notebook name');
+      name.addEventListener('change', () => {
+        notebook.name = name.value.trim() || 'Untitled notebook';
+        save();
+      });
+      const addPage = document.createElement('button');
+      addPage.type = 'button';
+      addPage.className = 'icon';
+      addPage.textContent = '+';
+      addPage.title = 'Add page';
+      addPage.setAttribute('aria-label', `Add page to ${notebook.name}`);
+      addPage.addEventListener('click', () => {
+        const page = { id: createId(), title: 'Untitled page', content: '', subpages: [] };
+        notebook.pages.push(page);
+        selectedNote = { notebookId: notebook.id, pageId: page.id, subpageId: '' };
+        save();
+        renderNotebooks();
+      });
+      const removeNotebook = document.createElement('button');
+      removeNotebook.type = 'button';
+      removeNotebook.className = 'icon';
+      removeNotebook.textContent = '×';
+      removeNotebook.title = 'Delete notebook';
+      removeNotebook.setAttribute('aria-label', `Delete ${notebook.name}`);
+      removeNotebook.addEventListener('click', () => {
+        if (!window.confirm(`Delete "${notebook.name}" and all of its pages?`)) return;
+        state.notebooks = state.notebooks.filter(entry => entry.id !== notebook.id);
+        if (selectedNote.notebookId === notebook.id) {
+          selectedNote = { notebookId: '', pageId: '', subpageId: '' };
+        }
+        save();
+        renderNotebooks();
+      });
+      header.append(name, addPage, removeNotebook);
+      group.appendChild(header);
+
+      notebook.pages.forEach(page => {
+        const row = document.createElement('div');
+        row.className = 'note-tree-row';
+        const selectPage = document.createElement('button');
+        selectPage.type = 'button';
+        selectPage.className = `note-tree-select${selectedNote.pageId === page.id && !selectedNote.subpageId ? ' active' : ''}`;
+        selectPage.dataset.noteId = page.id;
+        selectPage.textContent = page.title;
+        selectPage.addEventListener('click', () => {
+          selectedNote = { notebookId: notebook.id, pageId: page.id, subpageId: '' };
+          renderNotebooks();
+        });
+        const addSubpage = document.createElement('button');
+        addSubpage.type = 'button';
+        addSubpage.className = 'icon';
+        addSubpage.textContent = '+';
+        addSubpage.title = 'Add subpage';
+        addSubpage.setAttribute('aria-label', `Add subpage to ${page.title}`);
+        addSubpage.addEventListener('click', () => {
+          const subpage = { id: createId(), title: 'Untitled subpage', content: '' };
+          page.subpages.push(subpage);
+          selectedNote = { notebookId: notebook.id, pageId: page.id, subpageId: subpage.id };
+          save();
+          renderNotebooks();
+        });
+        const removePage = document.createElement('button');
+        removePage.type = 'button';
+        removePage.className = 'icon';
+        removePage.textContent = '×';
+        removePage.title = 'Delete page';
+        removePage.setAttribute('aria-label', `Delete ${page.title}`);
+        removePage.addEventListener('click', () => {
+          if (!window.confirm(`Delete "${page.title}" and its subpages?`)) return;
+          notebook.pages = notebook.pages.filter(entry => entry.id !== page.id);
+          if (selectedNote.pageId === page.id) {
+            selectedNote = { notebookId: notebook.id, pageId: '', subpageId: '' };
+          }
+          save();
+          renderNotebooks();
+        });
+        row.append(selectPage, addSubpage, removePage);
+        group.appendChild(row);
+
+        page.subpages.forEach(subpage => {
+          const subpageRow = document.createElement('div');
+          subpageRow.className = 'note-tree-row note-subpage-row';
+          const selectSubpage = document.createElement('button');
+          selectSubpage.type = 'button';
+          selectSubpage.className = `note-tree-select${selectedNote.subpageId === subpage.id ? ' active' : ''}`;
+          selectSubpage.dataset.noteId = subpage.id;
+          selectSubpage.textContent = `↳ ${subpage.title}`;
+          selectSubpage.addEventListener('click', () => {
+            selectedNote = { notebookId: notebook.id, pageId: page.id, subpageId: subpage.id };
+            renderNotebooks();
+          });
+          const removeSubpage = document.createElement('button');
+          removeSubpage.type = 'button';
+          removeSubpage.className = 'icon';
+          removeSubpage.textContent = '×';
+          removeSubpage.title = 'Delete subpage';
+          removeSubpage.setAttribute('aria-label', `Delete ${subpage.title}`);
+          removeSubpage.addEventListener('click', () => {
+            if (!window.confirm(`Delete "${subpage.title}"?`)) return;
+            page.subpages = page.subpages.filter(entry => entry.id !== subpage.id);
+            if (selectedNote.subpageId === subpage.id) selectedNote.subpageId = '';
+            save();
+            renderNotebooks();
+          });
+          subpageRow.append(selectSubpage, removeSubpage);
+          group.appendChild(subpageRow);
+        });
+      });
+      tree.appendChild(group);
+    });
+
+    const { notebook, page, note } = getSelectedNote();
+    const editor = $('noteEditor');
+    editor.hidden = !note;
+    $('noteEmpty').hidden = Boolean(note);
+    if (!note) return;
+    $('noteBreadcrumb').textContent = [notebook.name, page.title, selectedNote.subpageId ? note.title : ''].filter(Boolean).join(' / ');
+    $('noteTitle').value = note.title;
+    $('noteContent').value = note.content;
+  }
+
+  $('notebookForm').addEventListener('submit', event => {
+    event.preventDefault();
+    const name = $('notebookInput').value.trim();
+    if (!name) return;
+    const notebook = { id: createId(), name, pages: [] };
+    state.notebooks.push(notebook);
+    $('notebookInput').value = '';
+    selectedNote = { notebookId: notebook.id, pageId: '', subpageId: '' };
+    save();
+    renderNotebooks();
+  });
+  $('noteTitle').addEventListener('change', () => {
+    const { note } = getSelectedNote();
+    if (!note) return;
+    note.title = $('noteTitle').value.trim() || (selectedNote.subpageId ? 'Untitled subpage' : 'Untitled page');
+    save();
+    const treeButton = [...$('notebookTree').querySelectorAll('[data-note-id]')]
+      .find(button => button.dataset.noteId === note.id);
+    if (treeButton) {
+      treeButton.textContent = selectedNote.subpageId ? `↳ ${note.title}` : note.title;
+      const deleteButton = treeButton.parentElement.querySelector('[title^="Delete"]');
+      deleteButton.title = `Delete ${note.title}`;
+      deleteButton.setAttribute('aria-label', `Delete ${note.title}`);
+    }
+    const { notebook, page } = getSelectedNote();
+    $('noteBreadcrumb').textContent = [notebook.name, page.title, selectedNote.subpageId ? note.title : ''].filter(Boolean).join(' / ');
+  });
+  $('noteContent').addEventListener('input', () => {
+    const { note } = getSelectedNote();
+    if (!note) return;
+    note.content = $('noteContent').value;
+    save();
+  });
 
   function escapeHtml(value) {
     return String(value).replace(/[&<>"']/g, character => ({
@@ -894,7 +1280,7 @@ const STORAGE = 'life-system-v2';
 
     if ('serviceWorker' in navigator && location.protocol !== 'file:') {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./service-worker.js?v=10')
+        navigator.serviceWorker.register('./service-worker.js?v=13')
           .catch(error => console.warn('Could not register the app service worker:', error));
       });
     }
@@ -914,9 +1300,18 @@ const STORAGE = 'life-system-v2';
     } else {
       const hasImportedLegacyData = localStorage.getItem(LEGACY_MIGRATION) === 'true';
       state = normalizeState(hasImportedLegacyData ? defaultState() : legacyImportState);
+    }
+
+    let shouldSave = !row?.data;
+    if (state.statsResetVersion < 1) {
+      state.stats = { ...defaultState().stats };
+      state.statsResetVersion = 1;
+      shouldSave = true;
+    }
+    if (shouldSave) {
       const { error: saveError } = await supabaseClient.from('life_states').upsert({
         user_id: user.id,
-        data: state,
+        data: JSON.parse(JSON.stringify(state)),
         updated_at: new Date().toISOString()
       });
       if (saveError) throw saveError;
@@ -1012,7 +1407,7 @@ const STORAGE = 'life-system-v2';
     $('todayLabel').textContent = new Date().toLocaleDateString(undefined, { dateStyle: 'medium' });
     $('rememberMe').checked = localStorage.getItem(REMEMBER_KEY) !== 'false';
     applyStateToPage();
-    showPage('status');
+    showPage('today');
     if (!supabaseClient) {
       $('signInButton').disabled = true;
       $('signUpButton').disabled = true;

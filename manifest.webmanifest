@@ -11,10 +11,10 @@
   "theme_color": "#ffffff",
   "icons": [
     {
-      "src": "./daylight-icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "src": "./daylight-logo.png",
+      "sizes": "768x768",
+      "type": "image/png",
+      "purpose": "any"
     }
   ]
 }
