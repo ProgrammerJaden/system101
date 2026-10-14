@@ -698,7 +698,27 @@ const STORAGE = 'life-system-v2';
     $('diaryDateLabel').textContent = new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { dateStyle: 'long' });
     $('diaryFeeling').value = entry.feeling;
     $('diaryEntry').value = entry.entry;
-    $('diaryStatus').textContent = entry.feeling && entry.entry ? 'Entry saved' : 'No entry saved for this date';
+    $('diaryStatus').textContent = entry.feeling && entry.entry
+      ? 'Entry saved'
+      : entry.feeling || entry.entry ? 'Draft saved' : 'No entry saved for this date';
+  }
+
+  function autosaveDiaryDraft() {
+    const date = $('diaryDate').value;
+    if (!date) return;
+    const draft = {
+      feeling: $('diaryFeeling').value,
+      entry: $('diaryEntry').value
+    };
+    if (draft.feeling || draft.entry) {
+      state.diary[date] = draft;
+    } else {
+      delete state.diary[date];
+    }
+    save();
+    $('diaryStatus').textContent = draft.feeling && draft.entry
+      ? 'Saved automatically'
+      : draft.feeling || draft.entry ? 'Draft saved automatically' : 'Draft cleared';
   }
 
   $('diaryDate').addEventListener('change', () => {
@@ -707,6 +727,8 @@ const STORAGE = 'life-system-v2';
     renderDiary();
     renderCalendar();
   });
+  $('diaryFeeling').addEventListener('change', autosaveDiaryDraft);
+  $('diaryEntry').addEventListener('input', autosaveDiaryDraft);
   $('diaryForm').addEventListener('submit', event => {
     event.preventDefault();
     const date = $('diaryDate').value;
