@@ -894,7 +894,7 @@ const STORAGE = 'life-system-v2';
 
     if ('serviceWorker' in navigator && location.protocol !== 'file:') {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./service-worker.js')
+        navigator.serviceWorker.register('./service-worker.js?v=10')
           .catch(error => console.warn('Could not register the app service worker:', error));
       });
     }

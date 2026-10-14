@@ -1,13 +1,13 @@
-const CACHE_NAME = 'daylight-club-shell-v9';
+const CACHE_NAME = 'daylight-club-shell-v10';
 const APP_SHELL = [
   './',
   './index.html',
   './HTML.html',
-  './styles.css',
-  './script.js',
-  './supabase-config.js',
-  './manifest.webmanifest',
-  './daylight-icon.svg'
+  './styles.css?v=10',
+  './script.js?v=10',
+  './supabase-config.js?v=10',
+  './manifest.webmanifest?v=10',
+  './daylight-icon.svg?v=10'
 ];
 
 self.addEventListener('install', event => {
